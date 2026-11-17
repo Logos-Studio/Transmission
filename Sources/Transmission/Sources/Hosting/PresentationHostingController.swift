@@ -23,6 +23,7 @@ open class PresentationHostingController<
 
     private var didRelayoutDuringPresentation = false
     private var animator: UIViewPropertyAnimator?
+    private var isApplyingIntrinsicContentSizeChange = false
 
     open override func viewDidLoad() {
         super.viewDidLoad()
@@ -176,6 +177,13 @@ open class PresentationHostingController<
         isAnimated: Bool,
         changes: @MainActor @escaping () -> Void
     ) {
+        // Applying the change lays out the container, which re-enters
+        // viewDidLayoutSubviews. On iOS 18 the detent and the laid-out height
+        // can stay apart, so without this guard the layout recurses until the
+        // stack overflows.
+        guard !isApplyingIntrinsicContentSizeChange else { return }
+        isApplyingIntrinsicContentSizeChange = true
+        defer { isApplyingIntrinsicContentSizeChange = false }
         if isBeingPresented {
             didRelayoutDuringPresentation = true
         }
